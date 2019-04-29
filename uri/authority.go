@@ -12,7 +12,7 @@ type Authority struct {
 	Port     int16
 }
 
-func newAuthority(auth string, uri *URI) {
+func newAuthority(auth string, uri *URI) (a *Authority) {
 	data := regAuthority.FindStringSubmatch(auth)
 	var port int16
 	if data[5] == "" {
@@ -22,12 +22,17 @@ func newAuthority(auth string, uri *URI) {
 		port = int16(p)
 	}
 
-	uri.Authority = &Authority{
+	a = &Authority{
 		uri:      uri,
 		UserInfo: data[2],
 		Host:     data[3],
 		Port:     port,
 	}
+	if uri == nil {
+		return
+	}
+	uri.Authority = a
+	return
 }
 
 func (a *Authority) String() (s string) {
