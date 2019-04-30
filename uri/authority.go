@@ -36,11 +36,19 @@ func newAuthority(auth string, uri *URI) (a *Authority) {
 }
 
 func (a *Authority) String() (s string) {
+	hp := a.HostPort()
+	if hp != "" && a.UserInfo != "" {
+		s = a.UserInfo + "@" + hp
+	}
+	return
+}
+
+// HostPort return host:port
+func (a *Authority) HostPort() (s string) {
 	if a.Host != "" {
 		s = a.Host
-	}
-	if a.UserInfo != "" {
-		s = a.UserInfo + "@" + s
+	} else {
+		return ""
 	}
 	if a.Port >= 0 &&
 		(a.uri == nil || a.Port != SchemePort[a.uri.Scheme]) {

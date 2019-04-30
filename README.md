@@ -1,3 +1,3 @@
 # NPE
 
-Network Protocol Example -- Playground for [Doc](https://github.com/ddosakura/doc)
+Network Protocol Example -- Playground for [Doc/NetworkProtocol](https://github.com/ddosakura/doc/NetworkProtocol)
