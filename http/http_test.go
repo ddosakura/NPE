@@ -45,3 +45,18 @@ func TestRequest(t *testing.T) {
 	}
 	fmt.Println(r.String())
 }
+
+func TestOptions(t *testing.T) {
+	r, e := Build("baidu.com").Build(func(r *Request) {
+		r.SetMethod(OPTIONS)
+		r.URI.Path = "*"
+		fmt.Println(r)
+		fmt.Println("--- --- ---")
+	}).DoSync()
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	// 貌似没区分Options请求
+	fmt.Println(r.String())
+}
