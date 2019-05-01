@@ -2,7 +2,7 @@ package uri
 
 import (
 	"github.com/davecgh/go-spew/spew"
-	// "github.com/kr/pretty"
+	//"github.com/kr/pretty"
 	"testing"
 )
 
@@ -20,8 +20,8 @@ func TestParse(t *testing.T) {
 func testNew(t *testing.T, uri string, expect URI) {
 	t.Log("testing", expect.String())
 	ans := NewURI(uri)
-	//spew.Dump(ans)
-	// pretty.Println(ans, expect)
+	// spew.Dump(ans)
+	//pretty.Println(ans, expect)
 	if ans.String() != expect.String() {
 		t.Fatal(uri, "expect", expect.String(), "but", ans.String())
 	}
@@ -35,7 +35,7 @@ func TestNew(t *testing.T) {
 			UserInfo: "",
 			Host:     "baidu.com",
 			// Port:     80,
-			Port:     -1,
+			Port: -1,
 		},
 		Path:     "",
 		Query:    "",
@@ -58,7 +58,7 @@ func TestNew(t *testing.T) {
 			UserInfo: "user:pass",
 			Host:     "baidu.com",
 			// Port:     443,
-			Port:     -1,
+			Port: -1,
 		},
 		Path:     "/news",
 		Query:    "q=abc",
@@ -83,6 +83,19 @@ func TestNew(t *testing.T) {
 			Port:     -1,
 		},
 		Path:     "baidu.com",
+		Query:    "",
+		Fragment: "",
+	})
+
+	testNew(t, "https://baidu.com", URI{
+		Scheme: "https",
+		Authority: &Authority{
+			UserInfo: "",
+			Host:     "baidu.com",
+			// Port:     443,
+			Port: -1,
+		},
+		Path:     "",
 		Query:    "",
 		Fragment: "",
 	})
