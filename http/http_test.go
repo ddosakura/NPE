@@ -3,7 +3,8 @@ package http
 import (
 	"fmt"
 	"github.com/ddosakura/NPE/uri"
-	// "testing"
+	//"github.com/kr/pretty"
+	"testing"
 )
 
 func ExampleNewRequest() {
@@ -23,4 +24,24 @@ func ExampleNewRequest() {
 	// Output:
 	//
 	// ...
+}
+
+// go test -v -run ^TestRequest$
+func TestRequest(t *testing.T) {
+	r, e := Build("https://baidu.com").DoSync()
+	if e != nil {
+		t.Fatal(e)
+	}
+	if r.Code != 400 {
+		t.Fatal("code error!")
+	}
+
+	r, e = Build("www.baidu.com").Build(func(r *Request) {
+		fmt.Println(r)
+		fmt.Println("--- --- ---")
+	}).DoSync()
+	if e != nil {
+		t.Fatal(e)
+	}
+	fmt.Println(r.String())
 }
