@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"github.com/ddosakura/NPE/uri"
+	"time"
 	//"github.com/kr/pretty"
 	"testing"
 )
@@ -58,5 +59,18 @@ func TestOptions(t *testing.T) {
 	}
 
 	// 貌似没区分Options请求
+	fmt.Println(r.String())
+}
+
+// TODO: test after dohttps
+func TestModified(t *testing.T) {
+	r, e := Build("https://blog.moyinzi.top").Build(func(r *Request) {
+		r.Header["If-Modified-Since"] = time.Now().UTC().String()
+		fmt.Println(r)
+		fmt.Println("--- --- ---")
+	}).DoSync()
+	if e != nil {
+		t.Fatal(e)
+	}
 	fmt.Println(r.String())
 }

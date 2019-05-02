@@ -2,7 +2,9 @@ package http
 
 import (
 	"bufio"
+
 	"github.com/ddosakura/NPE/uri"
+
 	//"github.com/kr/pretty"
 	"io"
 	"net"
@@ -23,6 +25,8 @@ type Request struct {
 
 	Header  Header
 	Content *Content
+
+	ProxyAddr string
 }
 
 // MakeRequest for HTTP
@@ -228,13 +232,22 @@ func (r *R) Build(fn func(*Request)) *R {
 // DoSync Request
 func (r *R) DoSync() (*Response, error) {
 	host := r.req.URI.Authority.Host
-	port := r.req.URI.Authority.Port
-	if port < 0 {
-		port = uri.SchemePort[r.req.URI.Scheme]
-	}
-	tcpAddr, err := net.ResolveTCPAddr("tcp4", host+":"+strconv.Itoa(int(port)))
-	if err != nil {
-		return nil, err
+	var tcpAddr *net.TCPAddr
+	var err error
+	if r.req.ProxyAddr == "" {
+		port := r.req.URI.Authority.Port
+		if port < 0 {
+			port = uri.SchemePort[r.req.URI.Scheme]
+		}
+		tcpAddr, err = net.ResolveTCPAddr("tcp4", host+":"+strconv.Itoa(int(port)))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		tcpAddr, err = net.ResolveTCPAddr("tcp4", r.req.ProxyAddr)
+		if err != nil {
+			return nil, err
+		}
 	}
 	conn, err := net.DialTCP("tcp", nil, tcpAddr)
 	if err != nil {
