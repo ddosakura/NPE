@@ -1,11 +1,14 @@
 package main
 
 import (
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -119,12 +122,53 @@ var (
 	regHasPort = regexp.MustCompile(`(.*)(:([0-9]|[1-9]\d{1,3}|[1-5]\d{4}|6[0-4]\d{4}|65[0-4]\d{2}|655[0-2]\d|6553[0-5]))$`)
 )
 
+// Hop-by-hop headers
+// These headers are meaningful only for a single transport-level connection
+// and must not be retransmitted by proxies or cached. Such headers are:
+// Connection, Keep-Alive, Proxy-Authenticate, Proxy-Authorization, TE,
+// Trailer, Transfer-Encoding and Upgrade.
+// Note that only hop-by-hop headers may be set using the Connection general header.
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
-			dst.Add(k, v)
+			switch k {
+			case "Connection", "Keep-Alive", "Proxy-Authenticate", "Trailer", "Transfer-Encoding", "Upgrade":
+			default:
+				dst.Add(k, v)
+			}
 		}
 	}
+}
+
+var (
+	errAuthMethodUnsupported = errors.New("auth method unsupported")
+	errAuthNull              = errors.New("user/pass is null")
+)
+
+func (h handler) parseBaseCredential(basicCredential string) (user string, pass string, err error) {
+	auths := strings.SplitN(basicCredential, " ", 2)
+	if len(auths) != 2 {
+		return "", "", errAuthMethodUnsupported
+	}
+	authMethod := auths[0]
+	authB64 := auths[1]
+	switch authMethod {
+	case "Basic":
+		authstr, err := base64.StdEncoding.DecodeString(authB64)
+		if err != nil {
+			return "", "", err
+		}
+		//fmt.Println(string(authstr))
+		userPwd := strings.SplitN(string(authstr), ":", 2)
+		if len(userPwd) != 2 {
+			return "", "", errAuthNull
+		}
+		user = userPwd[0]
+		pass = userPwd[1]
+	default:
+		return "", "", errAuthMethodUnsupported
+	}
+	return
 }
 
 // https://medium.com/@mlowicki/http-s-proxy-in-golang-in-less-than-100-lines-of-code-6a51c2f2c38c
@@ -142,10 +186,34 @@ func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.config.BasicAuth != nil {
-		u, p, ok := r.BasicAuth()
-		if !ok ||
-			u != h.config.BasicAuth.User ||
-			p != h.config.BasicAuth.Pass {
+		//u, p, ok := r.BasicAuth()
+		//if !ok ||
+		//	u != h.config.BasicAuth.User ||
+		//	p != h.config.BasicAuth.Pass {
+		//	http.Error(rw,
+		//		"Username/Password Error",
+		//		http.StatusProxyAuthRequired)
+		//	return
+		//}
+
+		// TODO: auth
+
+		// https://www.jb51.net/article/89070.htm
+		auth := r.Header["Proxy-Authorization"]
+		if auth == nil || len(auth) < 1 {
+			rw.Header().Set("Proxy-Authenticate", `Basic realm="*"`)
+			http.Error(rw,
+				"Username/Password Error",
+				http.StatusProxyAuthRequired)
+			return
+		}
+		u, p, err := h.parseBaseCredential(auth[0])
+		if err != nil {
+			http.Error(rw,
+				err.Error(),
+				http.StatusProxyAuthRequired)
+		}
+		if u != h.config.BasicAuth.User || p != h.config.BasicAuth.Pass {
 			http.Error(rw,
 				"Username/Password Error",
 				http.StatusProxyAuthRequired)
@@ -183,7 +251,9 @@ func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			http.StatusServiceUnavailable)
 		return
 	}
-	rw.WriteHeader(http.StatusOK)
+	//rw.WriteHeader(http.StatusOK)
+	// TODO: OK? Connection established? Connection Established?
+	rw.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	fmt.Println(host, "conn ok!")
 
 	hijacker, ok := rw.(http.Hijacker)

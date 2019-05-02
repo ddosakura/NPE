@@ -2,8 +2,10 @@ package http
 
 import (
 	"fmt"
-	"github.com/ddosakura/NPE/uri"
 	"time"
+
+	"github.com/ddosakura/NPE/uri"
+
 	//"github.com/kr/pretty"
 	"testing"
 )
@@ -58,7 +60,7 @@ func TestOptions(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	// 貌似没区分Options请求
+	// 貌似 baidu 没区分 Options 请求
 	fmt.Println(r.String())
 }
 
