@@ -128,6 +128,13 @@ var (
 // Connection, Keep-Alive, Proxy-Authenticate, Proxy-Authorization, TE,
 // Trailer, Transfer-Encoding and Upgrade.
 // Note that only hop-by-hop headers may be set using the Connection general header.
+//
+// [RFC7231] 4.3.6 关于响应头
+// A server MUST NOT send any Transfer-Encoding or Content-Length header
+// fields in a 2xx (Successful) response to CONNECT.  A client MUST
+// ignore any Content-Length or Transfer-Encoding header fields received
+// in a successful response to CONNECT.
+// TODO: CHECK
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
@@ -185,6 +192,9 @@ func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		io.Copy(rw, res.Body)
 		return
 	}
+
+	// CONNECT
+
 	if h.config.BasicAuth != nil {
 		//u, p, ok := r.BasicAuth()
 		//if !ok ||
@@ -228,22 +238,29 @@ func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			http.StatusInternalServerError)
 	}
 
-	// TODO: remove?
+	// [RFC7231] 4.3.6
+	// the request-target
+	// consists of only the host name and port number of the tunnel
+	// destination, separated by a colon.
+	//
+	// --- So, need't to auto add :80/:443
+	//
 	host := r.Host
-	if !regHasPort.MatchString(host) {
-		switch r.URL.Scheme {
-		case "https":
-			host += ":443"
-		case "http":
-			host += ":80"
-		default:
-			http.Error(rw,
-				"Need http/https",
-				http.StatusBadRequest)
-			return
-		}
-	}
-	fmt.Println(host)
+	//if !regHasPort.MatchString(host) {
+	//	switch r.URL.Scheme {
+	//	case "https":
+	//		host += ":443"
+	//	case "http":
+	//		host += ":80"
+	//	default:
+	//		http.Error(rw,
+	//			"Need http/https",
+	//			http.StatusBadRequest)
+	//		return
+	//	}
+	//}
+	//fmt.Println(host)
+
 	conn, err := net.DialTimeout("tcp", host, 10*time.Second)
 	if err != nil {
 		http.Error(rw,
@@ -251,10 +268,16 @@ func (h handler) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 			http.StatusServiceUnavailable)
 		return
 	}
-	//rw.WriteHeader(http.StatusOK)
-	// TODO: OK? Connection established? Connection Established?
-	rw.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-	fmt.Println(host, "conn ok!")
+
+	// [RFC7231] 4.3.6 关于返回码
+	// CONNECT is intended only for use in requests to a proxy.  An origin
+	// server that receives a CONNECT request for itself MAY respond with a
+	// 2xx (Successful) status code to indicate that a connection is
+	// established.
+	rw.WriteHeader(http.StatusOK)
+	// [x] OK? Connection established? Connection Established?
+	//rw.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+	//fmt.Println(host, "conn ok!")
 
 	hijacker, ok := rw.(http.Hijacker)
 	if !ok {
