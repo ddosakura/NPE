@@ -2,6 +2,7 @@ package http
 
 import (
 	"bufio"
+	"errors"
 
 	"github.com/ddosakura/NPE/uri"
 
@@ -25,8 +26,6 @@ type Request struct {
 
 	Header  Header
 	Content *Content
-
-	ProxyAddr string
 }
 
 // MakeRequest for HTTP
@@ -214,6 +213,9 @@ func (r *Response) String() string {
 // R Flow
 type R struct {
 	req *Request
+
+	conn      *net.TCPConn
+	connError error
 }
 
 // Build Request
@@ -229,35 +231,51 @@ func (r *R) Build(fn func(*Request)) *R {
 	return r
 }
 
-// DoSync Request
-func (r *R) DoSync() (*Response, error) {
+// Conn for Request
+func (r *R) Conn(addr *net.TCPAddr) *R {
 	host := r.req.URI.Authority.Host
-	var tcpAddr *net.TCPAddr
 	var err error
-	if r.req.ProxyAddr == "" {
+	if addr == nil {
 		port := r.req.URI.Authority.Port
 		if port < 0 {
 			port = uri.SchemePort[r.req.URI.Scheme]
 		}
-		tcpAddr, err = net.ResolveTCPAddr("tcp4", host+":"+strconv.Itoa(int(port)))
+		addr, err = net.ResolveTCPAddr("tcp4", host+":"+strconv.Itoa(int(port)))
 		if err != nil {
-			return nil, err
-		}
-	} else {
-		tcpAddr, err = net.ResolveTCPAddr("tcp4", r.req.ProxyAddr)
-		if err != nil {
-			return nil, err
+			r.connError = err
+			return r
 		}
 	}
-	conn, err := net.DialTCP("tcp", nil, tcpAddr)
+	r.conn = cacheConn(addr)
+	if r.conn == nil {
+		conn, err := net.DialTCP("tcp", nil, addr)
+		if err != nil {
+			r.connError = err
+			return r
+		}
+		connCache(addr, conn)
+		r.conn = conn
+	}
+	return r
+}
+
+var (
+	errNeedConn = errors.New("need conn")
+)
+
+// DoSync Request
+func (r *R) DoSync() (*Response, error) {
+	host := r.req.URI.Authority.Host
+	if r.connError != nil {
+		return nil, r.connError
+	} else if r.conn == nil {
+		return nil, errNeedConn
+	}
+	_, err := r.conn.Write(MakeRequest(host).Bytes())
 	if err != nil {
 		return nil, err
 	}
-	_, err = conn.Write(MakeRequest(host).Bytes())
-	if err != nil {
-		return nil, err
-	}
-	return ParseResponse(conn), nil
+	return ParseResponse(r.conn), nil
 }
 
 // Do Request

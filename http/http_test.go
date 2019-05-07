@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"net"
 	"time"
 
 	"github.com/ddosakura/NPE/uri"
@@ -75,4 +76,59 @@ func TestModified(t *testing.T) {
 		t.Fatal(e)
 	}
 	fmt.Println(r.String())
+}
+
+func TestMultiRequest(t *testing.T) {
+	/*
+		get 180.97.33.107:80
+		set 180.97.33.107:80
+		get 180.97.33.108:80
+		http://www.baidu.com
+		set 180.97.33.108:80
+		http://www.baidu.com/s?wd=golang
+
+		golang 构造 TCPAddr 的时候会进行 DNS 查询?
+	*/
+	//Build("http://www.baidu.com").
+	//	Conn(nil).
+	//	Do(func(r *Response) {
+	//		fmt.Println("http://www.baidu.com")
+	//		fmt.Println(r.String())
+	//	}, func(e error) {
+	//		t.Log(e)
+	//	})
+	//Build("http://www.baidu.com/s?wd=golang").
+	//	Conn(nil).
+	//	Do(func(r *Response) {
+	//		fmt.Println("http://www.baidu.com/s?wd=golang")
+	//		fmt.Println(r.String())
+	//	}, func(e error) {
+	//		t.Log(e)
+	//	})
+
+	addr, err := net.ResolveTCPAddr("tcp4", "180.97.33.107:80")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	Build("http://baidu.com").
+		Conn(addr).
+		Do(func(r *Response) {
+			fmt.Println("http://baidu.com")
+			//fmt.Println("---", r)
+			fmt.Println(r.String())
+		}, func(e error) {
+			t.Log(e)
+		})
+	Build("http:///www.baidu.com").
+		Conn(addr).
+		Do(func(r *Response) {
+			fmt.Println("http://www.baidu.com")
+			//fmt.Println("---", r)
+			fmt.Println(r.String())
+		}, func(e error) {
+			t.Log(e)
+		})
+
+	time.Sleep(time.Second * 60)
 }
