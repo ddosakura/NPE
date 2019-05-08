@@ -134,12 +134,15 @@ var (
 // fields in a 2xx (Successful) response to CONNECT.  A client MUST
 // ignore any Content-Length or Transfer-Encoding header fields received
 // in a successful response to CONNECT.
-// TODO: CHECK
 func copyHeader(dst, src http.Header) {
 	for k, vv := range src {
 		for _, v := range vv {
+			// 8 个
 			switch k {
-			case "Connection", "Keep-Alive", "Proxy-Authenticate", "Trailer", "Transfer-Encoding", "Upgrade":
+			case "Connection", "Upgrade", "Transfer-Encoding", "Trailer",
+				"Keep-Alive",
+				"TE", "Proxy-Authorization",
+				"Proxy-Authenticate":
 			default:
 				dst.Add(k, v)
 			}
